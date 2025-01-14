@@ -86,15 +86,27 @@ if st.session_state["page"] == "register":
             st.error("Diese E-Mail ist bereits registriert.")
         else:
             hashed_pw = hash_password(password)
-            verification_link = f"https://nutrigpt.streamlit.app/verify?email={email}"
+            verification_link = f"https://nutrigpt.streamlit.app/?page=verify&email={email}"
             send_verification_email(email, verification_link)
             user_data[email] = {
                 "password": hashed_pw, "verified": False, "profile": {}, "role": "user"
             }
             save_user_data()
             st.success("Registrierung abgeschlossen! Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.")
-            navigate("data_collection")
     if st.button("Zurück zur Startseite", key="back_to_landing"):
+        navigate("landing")
+
+# Verification Page
+if st.session_state["page"] == "verify":
+    query_params = st.experimental_get_query_params()
+    email = query_params.get("email", [None])[0]
+    if email and email in user_data:
+        user_data[email]["verified"] = True
+        save_user_data()
+        st.success(f"Danke, {email}! Dein Konto wurde erfolgreich verifiziert.")
+        navigate("login")
+    else:
+        st.error("Ungültiger Verifizierungslink.")
         navigate("landing")
 
 # Data Collection Page
@@ -180,4 +192,3 @@ if st.session_state["page"] == "admin":
     else:
         st.error("Du hast keine Berechtigung, diese Seite anzuzeigen.")
         navigate("landing")
-
