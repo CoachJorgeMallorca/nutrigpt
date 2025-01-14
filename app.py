@@ -1,48 +1,54 @@
 import streamlit as st
+import json
 
-# Begrüßung
-st.title("NutriGPT - Dein virtueller Ernährungscoach")
-st.subheader("Erstelle deinen individuellen Ernährungsplan für optimale Performance")
+# Load or initialize the user database
+USER_DB = "user_data.json"
+try:
+    with open(USER_DB, "r") as f:
+        user_data = json.load(f)
+except FileNotFoundError:
+    user_data = {}
 
-# Schritt 1: Persönliche Daten
-st.header("1. Persönliche Daten")
-name = st.text_input("Wie heißt du?")
-age = st.number_input("Wie alt bist du?", min_value=1, max_value=100, value=30)
-weight = st.number_input("Wie viel wiegst du (in kg)?", min_value=20.0, max_value=200.0, value=70.0, step=0.1)
-height = st.number_input("Wie groß bist du (in cm)?", min_value=50.0, max_value=250.0, value=170.0, step=0.1)
-body_fat = st.number_input("Körperfettanteil (in %)?", min_value=0.0, max_value=100.0, value=15.0, step=0.1)
+# Save user data to file
+def save_user_data():
+    with open(USER_DB, "w") as f:
+        json.dump(user_data, f)
 
-# Schritt 2: Leistungsdaten
-st.header("2. Leistungsdaten")
-ftp = st.number_input("FTP (Radfahren) in Watt:", min_value=0, max_value=1000, value=200)
-vo2max = st.number_input("VO2max in ml/O2/kg:", min_value=0.0, max_value=100.0, value=45.0, step=0.1)
-vlamax = st.number_input("VLamax in mmol/l/s:", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
-fatmax = st.number_input("Fatmax in Watt (falls bekannt):", min_value=0, max_value=500, value=120)
+# App starts here
+st.title("NutriGPT - Mitgliederverwaltung")
 
-# Schritt 3: Trainingsplanung
-st.header("3. Trainingsplanung")
-today_workout = st.text_area("Heutiges Workout (z. B. 90 Min Rad GA1):")
-tomorrow_workout = st.text_area("Morgiges Workout (z. B. 60 Min Laufen mit 5x4 Min EB):")
+# Step 1: User identification
+st.header("1. Willkommen zurück oder Neues Profil erstellen")
+username = st.text_input("Wie heißt du?", key="username")
 
-# Schritt 4: Ziele definieren
-st.header("4. Ziele definieren")
-goal = st.selectbox(
-    "Was möchtest du erreichen?",
-    ["Abnehmen", "Gewicht halten", "Muskeln aufbauen", "Leistung steigern", "Fettstoffwechsel verbessern", "Kombination"]
-)
-time_frame = st.number_input("In welchem Zeitraum möchtest du dein Ziel erreichen (in Tagen)?", min_value=1, value=30)
+if username:
+    if username in user_data:
+        st.success(f"Willkommen zurück, {username}!")
+        # Check for updates in weight or body fat
+        if st.checkbox("Haben sich Gewicht oder Körperfettanteil geändert?"):
+            user_data[username]["weight"] = st.number_input("Aktuelles Gewicht (kg):", value=user_data[username]["weight"], step=0.1)
+            user_data[username]["body_fat"] = st.number_input("Aktueller Körperfettanteil (%):", value=user_data[username]["body_fat"], step=0.1)
+            save_user_data()
+            st.success("Daten aktualisiert!")
+    else:
+        st.info(f"Neues Profil für {username} erstellen.")
+        gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"])
+        age = st.number_input("Alter:", min_value=1, max_value=100, value=30, step=1)
+        height = st.number_input("Größe (cm):", min_value=50, max_value=250, value=170, step=1)
+        weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=70.0, step=0.1)
+        body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.1)
 
-# Daten auswerten
-if st.button("Plane meine Ernährung"):
-    # Beispielauswertung
-    st.success(f"Hallo {name}, basierend auf deinen Daten werde ich deinen Ernährungsplan erstellen!")
-    st.write(f"Alter: {age} Jahre | Gewicht: {weight} kg | Größe: {height} cm | Körperfett: {body_fat}%")
-    st.write(f"Ziel: {goal} in {time_frame} Tagen")
-    st.write("Deine heutigen Trainingseinheiten:", today_workout)
-    st.write("Deine morgigen Trainingseinheiten:", tomorrow_workout)
+        if st.button("Profil erstellen"):
+            user_data[username] = {
+                "gender": gender,
+                "age": age,
+                "height": height,
+                "weight": weight,
+                "body_fat": body_fat,
+            }
+            save_user_data()
+            st.success(f"Profil für {username} wurde erstellt!")
 
-    # Placeholder für weitere Logik (z. B. Berechnungen und Rezeptausgabe)
-    st.info("Weitere Funktionen wie Mahlzeitenplanung und PDF-Erstellung kommen hier später hinzu!")
-
-# Abschluss
-st.write("💡 Teste NutriGPT weiter und lass uns gemeinsam optimieren!")
+# Display stored data for debugging or review
+if st.checkbox("Gespeicherte Benutzer anzeigen"):
+    st.json(user_data)
