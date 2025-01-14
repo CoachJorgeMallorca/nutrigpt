@@ -67,17 +67,19 @@ st.subheader("Der Ernährungscoach für Ausdauersportler")
 # Landing Page
 if st.session_state["page"] == "landing":
     st.header("Bitte wähle eine Option")
-    if st.button("Registrieren"):
+    if st.button("Registrieren", key="register_button"):
         navigate("register")
-    if st.button("Anmelden"):
+    if st.button("Anmelden", key="login_button"):
         navigate("login")
+    if st.button("Admin", key="admin_button"):
+        navigate("admin")
 
 # Registration Page
 if st.session_state["page"] == "register":
     st.subheader("Registrierung")
-    email = st.text_input("E-Mail-Adresse")
-    password = st.text_input("Passwort", type="password")
-    if st.button("Konto erstellen"):
+    email = st.text_input("E-Mail-Adresse", key="register_email")
+    password = st.text_input("Passwort", type="password", key="register_password")
+    if st.button("Konto erstellen", key="create_account"):
         if email in user_data:
             st.error("Diese E-Mail ist bereits registriert.")
         else:
@@ -88,7 +90,7 @@ if st.session_state["page"] == "register":
             save_user_data()
             st.success("Registrierung abgeschlossen! Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.")
             navigate("data_collection")
-    if st.button("Zurück zur Startseite"):
+    if st.button("Zurück zur Startseite", key="back_to_landing"):
         navigate("landing")
 
 # Data Collection Page
@@ -97,14 +99,14 @@ if st.session_state["page"] == "data_collection":
     email = st.session_state.get("email", "")
     if email and email in user_data:
         profile = user_data[email].get("profile", {})
-        name = st.text_input("Name:", value=profile.get("name", ""))
-        gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"], index=0)
-        age = st.number_input("Alter:", min_value=1, max_value=100, value=profile.get("age", 30), step=1)
-        height = st.number_input("Größe (cm):", min_value=50.0, max_value=250.0, value=profile.get("height", 170.0), step=1.0)
-        weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=profile.get("weight", 70.0), step=0.1)
-        body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=profile.get("body_fat", 15.0), step=0.1)
+        name = st.text_input("Name:", value=profile.get("name", ""), key="data_name")
+        gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"], index=0, key="data_gender")
+        age = st.number_input("Alter:", min_value=1, max_value=100, value=profile.get("age", 30), step=1, key="data_age")
+        height = st.number_input("Größe (cm):", min_value=50.0, max_value=250.0, value=profile.get("height", 170.0), step=1.0, key="data_height")
+        weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=profile.get("weight", 70.0), step=0.1, key="data_weight")
+        body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=profile.get("body_fat", 15.0), step=0.1, key="data_body_fat")
 
-        if st.button("Daten speichern"):
+        if st.button("Daten speichern", key="save_data"):
             user_data[email]["profile"] = {
                 "name": name,
                 "gender": gender,
@@ -116,15 +118,15 @@ if st.session_state["page"] == "data_collection":
             save_user_data()
             st.success("Daten wurden gespeichert! Weiterleitung zum Profil...")
             navigate("profile")
-    if st.button("Zurück zur Startseite"):
+    if st.button("Zurück zur Startseite", key="back_to_landing_from_data"):
         navigate("landing")
 
 # Login Page
 if st.session_state["page"] == "login":
     st.subheader("Anmeldung")
-    email = st.text_input("E-Mail-Adresse (Anmeldung)")
-    password = st.text_input("Passwort (Anmeldung)", type="password")
-    if st.button("Einloggen"):
+    email = st.text_input("E-Mail-Adresse (Anmeldung)", key="login_email")
+    password = st.text_input("Passwort (Anmeldung)", type="password", key="login_password")
+    if st.button("Einloggen", key="login_button_submit"):
         if email not in user_data:
             st.error("Kein Konto mit dieser E-Mail gefunden.")
         elif not user_data[email].get("verified", False):
@@ -135,7 +137,7 @@ if st.session_state["page"] == "login":
             st.success(f"Willkommen zurück, {email}!")
             st.session_state["email"] = email
             navigate("profile")
-    if st.button("Zurück zur Startseite"):
+    if st.button("Zurück zur Startseite", key="back_to_landing_from_login"):
         navigate("landing")
 
 # Profile Page
@@ -145,8 +147,21 @@ if st.session_state["page"] == "profile":
         st.subheader(f"Profil von {email}")
         profile = user_data[email].get("profile", {})
         st.write("Profil:", profile)
-        if st.button("Profil bearbeiten"):
+        if st.button("Profil bearbeiten", key="edit_profile"):
             navigate("data_collection")
-        if st.button("Abmelden"):
+        if st.button("Abmelden", key="logout"):
             del st.session_state["email"]
             navigate("landing")
+
+# Admin Page
+if st.session_state["page"] == "admin":
+    st.subheader("Admin-Bereich")
+    st.write("Benutzerliste:")
+    for user, details in user_data.items():
+        st.write(f"E-Mail: {user}")
+        st.write(f"Verifiziert: {details.get('verified', False)}")
+        st.write("Profil:", details.get("profile", {}))
+        if st.button(f"Benutzer löschen: {user}", key=f"delete_{user}"):
+            del user_data[user]
+            save_user_data()
+            st.success(f"Benutzer {user} wurde gelöscht.")
