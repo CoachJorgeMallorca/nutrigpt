@@ -1,94 +1,170 @@
 import streamlit as st
-import hashlib
 
-# NutriGPT: Virtual Nutrition Coach
-st.title("NutriGPT - Dein Ernährungscoach für Ausdauersportler")
-st.subheader("Individuelle Ernährungspläne für deine Trainingsziele")
+# -----------------------------
+# Hilfsfunktionen
+# -----------------------------
 
-# Prompt Explanation
-st.write("Hallo! Ich bin NutriGPT, dein virtueller Ernährungscoach. Ich helfe dir, deine Ernährung optimal an deine Trainingsziele anzupassen. Lass uns starten!")
+def berechne_grundumsatz_harris_benedict(geschlecht, gewicht, groesse, alter):
+    """
+    Harris-Benedict-Formel:
+    Männer:  66,47 + (13,7 x Gewicht in kg) + (5 x Größe in cm) - (6,8 x Alter)
+    Frauen: 655,1 + (9,6 x Gewicht in kg)   + (1,8 x Größe in cm) - (4,7 x Alter)
+    """
+    if geschlecht.lower() in ["m", "mann", "male"]:
+        grundumsatz = 66.47 + (13.7 * gewicht) + (5 * groesse) - (6.8 * alter)
+    else:
+        grundumsatz = 655.1 + (9.6 * gewicht) + (1.8 * groesse) - (4.7 * alter)
+    return round(grundumsatz, 2)
 
-# Collect biometric data
-gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"], index=0)
-age = st.number_input("Alter:", min_value=1, max_value=100, value=30, step=1)
-height = st.number_input("Größe (cm):", min_value=50.0, max_value=250.0, value=170.0, step=1.0)
-weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=70.0, step=0.1)
-body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.1)
+def berechne_arbeitsumsatz(grundumsatz, pal):
+    """Berechnet den Gesamtumsatz: Grundumsatz * PAL."""
+    return round(grundumsatz * pal, 2)
 
-# Collect performance data
-ftp = st.number_input("FTP (Watt):", min_value=0.0, max_value=500.0, value=200.0, step=0.1)
-vo2max = st.number_input("VO2max (ml/kg/min):", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
-vlamax = st.number_input("VLamax (mmol/l/s):", min_value=0.0, max_value=1.0, value=0.6, step=0.01)
-fatmax = st.number_input("Fatmax (Watt):", min_value=0.0, max_value=500.0, value=150.0, step=0.1)
+def antworte_auf_nachricht(user_msg, user_data):
+    """
+    Kernlogik, die auf Basis des Prompts und der Nutzerdaten antwortet.
+    user_data ist ein Dictionary mit allen relevanten Infos.
+    """
+    # Fiktive Beispielantwort, die die Daten auswertet.
+    # Im echten Einsatz würdest du hier weitere Berechnungen
+    # und Empfehlungen (z. B. aus dem Prompt) integrieren.
+    
+    if "grundumsatz" not in user_data:
+        return (
+            "Ich habe noch nicht alle Daten von dir. "
+            "Bitte trage erst alle notwendigen Angaben ein."
+        )
+    
+    # Beispiel: Überprüfen, ob der User nach 'Kalorienbedarf' gefragt hat
+    if "kalorienbedarf" in user_msg.lower():
+        return (
+            f"Dein geschätzter Grundumsatz liegt bei {user_data['grundumsatz']} kcal. "
+            f"Dein Gesamtumsatz (inkl. PAL von {user_data['pal']}) liegt bei "
+            f"{user_data['arbeitsumsatz']} kcal.\n\n"
+            "Falls du dein Gewicht halten möchtest, ist das dein grober Tagesbedarf. "
+            "Für Muskelaufbau und höhere Leistungsziele können wir "
+            "die Kalorienaufnahme entsprechend anpassen."
+        )
+    
+    # Beispiel-Antwort auf eine andere Frage
+    if "Hallo" in user_msg or "Servus" in user_msg or "Moin" in user_msg:
+        return (
+            "Hallo! Wie kann ich dir heute weiterhelfen? Vielleicht willst du mehr "
+            "über deinen Kohlenhydratbedarf vor dem Training wissen?"
+        )
+    
+    # Fallback-Antwort
+    return (
+        "Danke für deine Nachricht! Ich bin hier, um deine Fragen rund um "
+        "Ernährung und Training zu beantworten. Versuche es mit einer konkreten Frage, "
+        "z. B. 'Wie hoch ist mein Kalorienbedarf?' oder 'Wie sieht eine "
+        "typische Recovery-Mahlzeit aus?'"
+    )
 
-# Goals and timeline
-goal = st.multiselect(
-    "Ziele:",
-    [
-        "Volkstriathlon", "Olympische Distanz Triathlon", "Mitteldistanz Triathlon", "Langdistanz Triathlon",
-        "Marathon", "Radmarathon", "Abnehmen", "Gewicht halten", "Muskelaufbau", "Leistung steigern",
-        "Fettstoffwechsel verbessern", "VO2max steigern", "VLamax senken"
-    ],
-    default=["Abnehmen"]
-)
-timeline = st.text_input("Wann möchtest du dein Ziel erreichen? (z. B. 'In 3 Monaten', 'Bis zum nächsten Wettkampf')")
+# -----------------------------
+# Streamlit-App
+# -----------------------------
 
-# PAL-Wert
-deficit = st.slider("Kaloriendefizit (maximal 500 kcal empfohlen):", min_value=0, max_value=500, value=300, step=50)
-pal = st.number_input("PAL-Wert (Physical Activity Level):", min_value=1.0, max_value=2.5, value=1.2, step=0.1)
+def main():
+    st.set_page_config(page_title="NutriGPT", layout="centered")
+    st.title("NutriGPT: Virtueller Ernährungscoach")
+    st.write(
+        "Willkommen bei NutriGPT! Ich helfe dir, deine Ernährung auf "
+        "deine Trainingsziele abzustimmen. "
+        "Gib deine Daten ein und starte das Chat-Gespräch."
+    )
 
-# Training plans
-st.write("### Trainingsplanung")
-workout_today = st.text_input("Trainingseinheit heute (z. B. 60min Laufen GA1):")
-workout_tomorrow = st.text_input("Trainingseinheit morgen (z. B. 90min Radfahren mit 3x10min EB):")
+    # Session State für Nachrichten und Benutzerdaten
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []
+    if "user_data" not in st.session_state:
+        st.session_state["user_data"] = {}
 
-def calculate_tdee(weight, height, age, gender, pal):
-    tdee = (10 * weight) + (6.25 * height) - (5 * age)
-    tdee += 5 if gender == "Männlich" else -161
-    return tdee * pal
+    # -----------------------------
+    # Dateneingabe
+    # -----------------------------
+    with st.form("dateneingabe"):
+        geschlecht = st.selectbox("Geschlecht", ["Männlich", "Weiblich"])
+        alter = st.number_input("Alter (Jahre)", min_value=1, max_value=120, value=30)
+        groesse = st.number_input("Größe (cm)", min_value=100, max_value=250, value=180)
+        gewicht = st.number_input("Gewicht (kg)", min_value=30.0, max_value=250.0, value=75.0)
+        koerperfett = st.number_input("Körperfettanteil (%)", min_value=0.0, max_value=60.0, value=15.0)
+        pal = st.selectbox(
+            "PAL-Wert (Physical Activity Level)",
+            [("Sitzend / kaum Bewegung", 1.2),
+             ("Sitzend / wenig Bewegung", 1.4),
+             ("Stehend / gehend", 1.6),
+             ("Körperlich anstrengende Arbeit", 1.8)]
+        )
 
-def calculate_training_calories(activity, duration, intensity, weight):
-    if activity == "Laufen":
-        pace_factor = {
-            "GA1": 0.8, "GA2": 0.9, "SWB": 1.0, "EB": 1.1, "WSA": 1.2
-        }.get(intensity, 1.0)
-        return duration * (weight * pace_factor)
-    elif activity == "Radfahren":
-        ftp_factor = {
-            "REKOM": 0.5, "GA1": 0.75, "GA2": 0.9, "SWB": 1.0, "EB": 1.2, "WSA": 1.4
-        }.get(intensity, 1.0)
-        return duration * (ftp * ftp_factor)
-    elif activity == "Schwimmen":
-        pace_factor = {
-            "schnell": 0.15, "mittel": 0.18, "langsam": 0.20
-        }.get(intensity, 0.18)
-        return duration * (weight * pace_factor)
-    return 0
+        # Leistungsdaten
+        ftp = st.number_input("FTP (Watt)", min_value=0, max_value=600, value=200)
+        vo2max = st.number_input("VO2max (ml/min/kg)", min_value=0.0, max_value=90.0, value=50.0)
+        vlamax = st.number_input("VLamax (mmol/l/s)", min_value=0.0, max_value=2.0, value=0.5)
+        fatmax = st.number_input("Fatmax (kcal/h)", min_value=0.0, max_value=1500.0, value=300.0)
 
-# Calculate total daily energy expenditure
-tdee = calculate_tdee(weight, height, age, gender, pal)
-training_calories_today = calculate_training_calories("Laufen", 60, "GA1", weight)
-training_calories_tomorrow = calculate_training_calories("Radfahren", 90, "GA2", weight)
-total_calories_today = tdee + training_calories_today - deficit
+        ziel = st.multiselect(
+            "Ziele",
+            ["Volkstriathlon", "Olympische Distanz", "Mitteldistanz", "Langdistanz",
+             "Marathon", "Radmarathon", "Abnehmen", "Gewicht halten", "Muskelaufbau",
+             "Fettstoffwechsel verbessern", "VO2max steigern", "VLamax senken"]
+        )
 
-def generate_meal_plan():
-    return {
-        "Frühstück": "Haferflocken (30g), Milch (200ml), Banane (1)",
-        "Mittagessen": "Hähnchenbrust (150g), Gemüse (200g), Reis (50g)",
-        "Abendessen": "Eier (2), Vollkornbrot (50g), Avocado (1/2)",
-        "Snacks": "Recovery-Shake (30g Protein, 60g Kohlenhydrate)"
-    }
+        zeitlicher_rahmen = st.text_input("Zeitlicher Rahmen (z.B. Wettkampfdatum, Abnehmziel etc.)")
 
-if st.button("Ernährungsplan erstellen"):
-    meal_plan = generate_meal_plan()
-    st.write("### Dein Tagesbedarf")
-    st.write(f"Grundumsatz: {tdee:.2f} kcal")
-    st.write(f"Trainingseinheiten heute: {training_calories_today:.2f} kcal")
-    st.write(f"Kalorienziel (inkl. Defizit): {total_calories_today:.2f} kcal")
+        training_heute = st.text_area("Geplante Einheit(en) HEUTE (z.B. 60min Laufen GA1)")
+        training_morgen = st.text_area("Geplante Einheit(en) MORGEN (z.B. 90min Rad GA2)")
 
-    st.write("### Dein Ernährungsplan")
-    for meal, desc in meal_plan.items():
-        st.write(f"- **{meal}:** {desc}")
+        # Beim Klick auf den Absenden-Button werden Daten übernommen
+        submitted = st.form_submit_button("Daten übernehmen")
+        if submitted:
+            # Harris-Benedict
+            grundumsatz = berechne_grundumsatz_harris_benedict(
+                geschlecht, gewicht, groesse, alter
+            )
+            arbeitsumsatz = berechne_arbeitsumsatz(grundumsatz, pal[1])
 
-    st.write("### Empfehlungen für Snacks")
-    st.write("- Recovery-Shake: 60g Kohlenhydrate, 30g Protein (ca. 350 kcal)")
+            st.session_state["user_data"] = {
+                "geschlecht": geschlecht,
+                "alter": alter,
+                "groesse": groesse,
+                "gewicht": gewicht,
+                "kfa": koerperfett,
+                "pal": pal[1],
+                "ftp": ftp,
+                "vo2max": vo2max,
+                "vlamax": vlamax,
+                "fatmax": fatmax,
+                "ziel": ziel,
+                "zeitlicher_rahmen": zeitlicher_rahmen,
+                "training_heute": training_heute,
+                "training_morgen": training_morgen,
+                "grundumsatz": grundumsatz,
+                "arbeitsumsatz": arbeitsumsatz
+            }
+
+            st.success("Daten übernommen! Du kannst nun im Chat weiter unten fragen stellen.")
+
+    # -----------------------------
+    # Chat-Bereich
+    # -----------------------------
+    st.write("---")
+    st.header("NutriGPT-Chat")
+    user_input = st.text_input("Deine Nachricht:")
+    if st.button("Senden"):
+        # Speichere User-Nachricht
+        st.session_state["messages"].append({"role": "user", "content": user_input})
+
+        # Generiere Antwort
+        nutri_antwort = antworte_auf_nachricht(user_input, st.session_state["user_data"])
+        st.session_state["messages"].append({"role": "assistant", "content": nutri_antwort})
+
+    # Chat-Verlauf anzeigen
+    for msg in st.session_state["messages"]:
+        if msg["role"] == "assistant":
+            st.markdown(f"**NutriGPT**: {msg['content']}")
+        else:
+            st.markdown(f"**Du**: {msg['content']}")
+
+if __name__ == "__main__":
+    main()
