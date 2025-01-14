@@ -55,6 +55,8 @@ def hash_password(password):
 # Initialize session state
 if "page" not in st.session_state:
     st.session_state["page"] = "landing"
+if "role" not in st.session_state:
+    st.session_state["role"] = None
 
 # Navigation function
 def navigate(page):
@@ -84,9 +86,11 @@ if st.session_state["page"] == "register":
             st.error("Diese E-Mail ist bereits registriert.")
         else:
             hashed_pw = hash_password(password)
-            verification_link = "https://example.com/verify?email=" + email
+            verification_link = f"https://nutrigpt.streamlit.app/verify?email={email}"
             send_verification_email(email, verification_link)
-            user_data[email] = {"password": hashed_pw, "verified": False, "profile": {}}
+            user_data[email] = {
+                "password": hashed_pw, "verified": False, "profile": {}, "role": "user"
+            }
             save_user_data()
             st.success("Registrierung abgeschlossen! Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.")
             navigate("data_collection")
@@ -136,6 +140,7 @@ if st.session_state["page"] == "login":
         else:
             st.success(f"Willkommen zurück, {email}!")
             st.session_state["email"] = email
+            st.session_state["role"] = user_data[email].get("role", "user")
             navigate("profile")
     if st.button("Zurück zur Startseite", key="back_to_landing_from_login"):
         navigate("landing")
@@ -143,25 +148,36 @@ if st.session_state["page"] == "login":
 # Profile Page
 if st.session_state["page"] == "profile":
     email = st.session_state.get("email", "")
+    role = st.session_state.get("role", "user")
     if email:
         st.subheader(f"Profil von {email}")
         profile = user_data[email].get("profile", {})
         st.write("Profil:", profile)
+        if role == "admin":
+            st.write("Du hast Admin-Rechte.")
         if st.button("Profil bearbeiten", key="edit_profile"):
             navigate("data_collection")
         if st.button("Abmelden", key="logout"):
             del st.session_state["email"]
+            del st.session_state["role"]
             navigate("landing")
 
 # Admin Page
 if st.session_state["page"] == "admin":
-    st.subheader("Admin-Bereich")
-    st.write("Benutzerliste:")
-    for user, details in user_data.items():
-        st.write(f"E-Mail: {user}")
-        st.write(f"Verifiziert: {details.get('verified', False)}")
-        st.write("Profil:", details.get("profile", {}))
-        if st.button(f"Benutzer löschen: {user}", key=f"delete_{user}"):
-            del user_data[user]
-            save_user_data()
-            st.success(f"Benutzer {user} wurde gelöscht.")
+    email = st.session_state.get("email", "")
+    role = st.session_state.get("role", "user")
+    if role == "admin":
+        st.subheader("Admin-Bereich")
+        st.write("Benutzerliste:")
+        for user, details in user_data.items():
+            st.write(f"E-Mail: {user}")
+            st.write(f"Verifiziert: {details.get('verified', False)}")
+            st.write("Profil:", details.get("profile", {}))
+            if st.button(f"Benutzer löschen: {user}", key=f"delete_{user}"):
+                del user_data[user]
+                save_user_data()
+                st.success(f"Benutzer {user} wurde gelöscht.")
+    else:
+        st.error("Du hast keine Berechtigung, diese Seite anzuzeigen.")
+        navigate("landing")
+
