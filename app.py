@@ -18,10 +18,13 @@ def save_user_data():
     with open(USER_DB, "w") as f:
         json.dump(user_data, f)
 
-# Email verification (placeholder function)
+# Email verification
 def send_verification_email(email, verification_link):
-    sender_email = "your_email@example.com"
-    sender_password = "your_password"
+    sender_email = "jorge@jorge-sports.com"
+    sender_password = "Capoeira72!Jorge!"
+    smtp_server = "smtp.strato.de"
+    smtp_port = 587
+
     receiver_email = email
 
     message = MIMEMultipart("alternative")
@@ -37,10 +40,13 @@ def send_verification_email(email, verification_link):
     message.attach(part1)
     message.attach(part2)
 
-    with smtplib.SMTP("smtp.example.com", 587) as server:
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+    except Exception as e:
+        st.error(f"Fehler beim Senden der E-Mail: {e}")
 
 # Hashing passwords
 def hash_password(password):
