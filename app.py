@@ -87,7 +87,35 @@ if st.session_state["page"] == "register":
             user_data[email] = {"password": hashed_pw, "verified": False, "profile": {}}
             save_user_data()
             st.success("Registrierung abgeschlossen! Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.")
-            navigate("landing")
+            navigate("data_collection")
+    if st.button("Zurück zur Startseite"):
+        navigate("landing")
+
+# Data Collection Page
+if st.session_state["page"] == "data_collection":
+    st.subheader("Persönliche Daten erfassen")
+    email = st.session_state.get("email", "")
+    if email and email in user_data:
+        profile = user_data[email].get("profile", {})
+        name = st.text_input("Name:", value=profile.get("name", ""))
+        gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"], index=0)
+        age = st.number_input("Alter:", min_value=1, max_value=100, value=profile.get("age", 30), step=1)
+        height = st.number_input("Größe (cm):", min_value=50.0, max_value=250.0, value=profile.get("height", 170.0), step=1.0)
+        weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=profile.get("weight", 70.0), step=0.1)
+        body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=profile.get("body_fat", 15.0), step=0.1)
+
+        if st.button("Daten speichern"):
+            user_data[email]["profile"] = {
+                "name": name,
+                "gender": gender,
+                "age": age,
+                "height": height,
+                "weight": weight,
+                "body_fat": body_fat,
+            }
+            save_user_data()
+            st.success("Daten wurden gespeichert! Weiterleitung zum Profil...")
+            navigate("profile")
     if st.button("Zurück zur Startseite"):
         navigate("landing")
 
@@ -118,24 +146,7 @@ if st.session_state["page"] == "profile":
         profile = user_data[email].get("profile", {})
         st.write("Profil:", profile)
         if st.button("Profil bearbeiten"):
-            name = st.text_input("Name:", value=profile.get("name", ""))
-            gender = st.selectbox("Geschlecht:", ["Männlich", "Weiblich", "Andere"], index=0)
-            age = st.number_input("Alter:", min_value=1, max_value=100, value=profile.get("age", 30), step=1)
-            height = st.number_input("Größe (cm):", min_value=50.0, max_value=250.0, value=profile.get("height", 170.0), step=1.0)
-            weight = st.number_input("Gewicht (kg):", min_value=20.0, max_value=200.0, value=profile.get("weight", 70.0), step=0.1)
-            body_fat = st.number_input("Körperfettanteil (%):", min_value=0.0, max_value=100.0, value=profile.get("body_fat", 15.0), step=0.1)
-
-            if st.button("Daten speichern"):
-                user_data[email]["profile"] = {
-                    "name": name,
-                    "gender": gender,
-                    "age": age,
-                    "height": height,
-                    "weight": weight,
-                    "body_fat": body_fat,
-                }
-                save_user_data()
-                st.success("Profil wurde aktualisiert!")
+            navigate("data_collection")
         if st.button("Abmelden"):
             del st.session_state["email"]
             navigate("landing")
